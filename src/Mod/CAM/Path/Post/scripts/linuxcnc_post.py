@@ -77,6 +77,7 @@ parser.add_argument(
     action="store_true",
     help="suppress tool length offset (G43) following tool changes",
 )
+parser.add_argument("--tool-retraction", action="store_true", help="Retract tool in Z-axis for every tool change")
 
 TOOLTIP_ARGS = parser.format_help()
 
@@ -135,6 +136,7 @@ def processArguments(argstring):
     global MODAL
     global USE_TLO
     global OUTPUT_DOUBLES
+    global TOOL_CHANGE
 
     try:
         args = parser.parse_args(shlex.split(argstring))
@@ -157,12 +159,14 @@ def processArguments(argstring):
             UNIT_SPEED_FORMAT = "in/min"
             UNIT_FORMAT = "in"
             PRECISION = 4
+        if args.tool_retraction:
+            POSTAMBLE += "G92 Z0\n"
+            TOOL_CHANGE += "G92 Z0\n"
         if args.modal:
             MODAL = True
         if args.no_tlo:
             USE_TLO = False
         if args.axis_modal:
-            print("here")
             OUTPUT_DOUBLES = False
 
     except Exception:
