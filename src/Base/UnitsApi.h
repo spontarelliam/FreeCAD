@@ -47,8 +47,7 @@ public:
     static void setSchema(const std::string& name);
     static void setSchema(std::size_t num);
 
-    static std::string
-    schemaTranslate(const Quantity& quant, double& factor, std::string& unitString);
+    static std::string schemaTranslate(const Quantity& quant, double& factor, std::string& unitString);
 
     static std::string schemaTranslate(const Quantity& quant);
 
@@ -68,6 +67,7 @@ public:
     static bool isMultiUnitAngle();
     static bool isMultiUnitLength();
     static std::string getBasicLengthUnit();
+    static std::string getUnitText(const Quantity& quant);
 
     static std::size_t getDefSchemaNum()
     {
@@ -77,8 +77,7 @@ public:
     static PyMethodDef Methods[];
 
 protected:
-    static inline auto schemas =
-        std::make_unique<UnitsSchemas>(UnitsSchemasData::unitSchemasDataPack);
+    static inline auto schemas = std::make_unique<UnitsSchemas>(UnitsSchemasData::unitSchemasDataPack);
     static inline int decimals {-1};
     static inline int denominator {-1};
 

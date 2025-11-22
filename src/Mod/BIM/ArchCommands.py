@@ -245,6 +245,15 @@ def removeComponents(objectsList, host=None):
         for o in objectsList:
             if o.InList:
                 h = o.InList[0]
+
+                is_base_removal = hasattr(h, "Base") and h.Base == o
+                has_handler = hasattr(h, "Proxy") and hasattr(h.Proxy, "handleComponentRemoval")
+
+                if is_base_removal and has_handler:
+                    # Dispatch to the object's own smart removal logic and skip the old code path.
+                    h.Proxy.handleComponentRemoval(h, o)
+                    continue
+
                 tp = Draft.getType(h)
                 if tp in ["Floor", "Building", "Site", "BuildingPart"]:
                     c = h.Group
@@ -712,7 +721,7 @@ def removeShape(objs, mark=True):
                     str.Placement = dims[0]
                 elif tp == "Wall":
                     FreeCAD.ActiveDocument.removeObject(name)
-                    import ArchWall
+                    import Arch
 
                     length = dims[1]
                     width = dims[2]
@@ -721,7 +730,7 @@ def removeShape(objs, mark=True):
                     v1 = dims[0].multVec(v1)
                     v2 = dims[0].multVec(v2)
                     line = Draft.makeLine(v1, v2)
-                    ArchWall.makeWall(line, width=width, height=dims[3], name=name)
+                    Arch.makeWall(line, width=width, height=dims[3], name=name)
         else:
             if mark:
                 obj.ViewObject.ShapeColor = (1.0, 0.0, 0.0, 1.0)

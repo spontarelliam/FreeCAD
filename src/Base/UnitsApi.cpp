@@ -66,6 +66,11 @@ std::string UnitsApi::getBasicLengthUnit()
     return schemas->currentSchema()->getBasicLengthUnit();
 }
 
+std::string UnitsApi::getUnitText(const Quantity& quant)
+{
+    return schemas->currentSchema()->getUnitText(quant);
+}
+
 void UnitsApi::setDecimals(const int prec)
 {
     decimals = prec;
@@ -123,8 +128,7 @@ double UnitsApi::toDouble(PyObject* args, const Base::Unit& u)
     throw Base::UnitsMismatchError("Wrong parameter type!");
 }
 
-std::string
-UnitsApi::schemaTranslate(const Quantity& quant, double& factor, std::string& unitString)
+std::string UnitsApi::schemaTranslate(const Quantity& quant, double& factor, std::string& unitString)
 {
     return schemas->currentSchema()->translate(quant, factor, unitString);
 }
