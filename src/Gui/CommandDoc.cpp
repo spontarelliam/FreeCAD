@@ -83,7 +83,7 @@ StdCmdOpen::StdCmdOpen()
     // setting the
     sGroup = "File";
     sMenuText = QT_TR_NOOP("&Open…");
-    sToolTipText = QT_TR_NOOP("Opens a document or imports files");
+    sToolTipText = QT_TR_NOOP("Opens a FreeCAD document");
     sWhatsThis = "Std_Open";
     sStatusTip = sToolTipText;
     sPixmap = "document-open";
@@ -95,43 +95,18 @@ void StdCmdOpen::activated(int iMsg)
 {
     Q_UNUSED(iMsg);
 
-    // fill the list of registered endings
     QString formatList;
-    const char* supported = QT_TR_NOOP("Supported formats");
-    const char* allFiles = QT_TR_NOOP("All files (*.*)");
-    formatList = QObject::tr(supported);
-    formatList += QLatin1String(" (");
-
-    std::vector<std::string> filetypes = App::GetApplication().getImportTypes();
-    // Make sure FCStd is the very first fileformat
-    auto it = std::ranges::find(filetypes, "FCStd");
-    if (it != filetypes.end()) {
-        filetypes.erase(it);
-        filetypes.insert(filetypes.begin(), "FCStd");
-    }
-    for (it = filetypes.begin(); it != filetypes.end(); ++it) {
-        formatList += QLatin1String(" *.");
-        formatList += QLatin1String(it->c_str());
-    }
-
-    formatList += QLatin1String(");;");
-
-    std::map<std::string, std::string> FilterList = App::GetApplication().getImportFilters();
-    std::map<std::string, std::string>::iterator jt;
-    // Make sure the format name for FCStd is the very first in the list
-    for (jt = FilterList.begin(); jt != FilterList.end(); ++jt) {
-        if (jt->first.find("*.FCStd") != std::string::npos) {
-            formatList += QLatin1String(jt->first.c_str());
-            formatList += QLatin1String(";;");
-            FilterList.erase(jt);
+    std::map<std::string, std::string> filters = App::GetApplication().getImportFilters();
+    for (const auto &kv : filters) {
+        QString key = QString::fromUtf8(kv.first.c_str());
+        if (key.contains(QLatin1String("*.FCStd"), Qt::CaseInsensitive)) {
+            formatList = key;
             break;
         }
     }
-    for (jt = FilterList.begin(); jt != FilterList.end(); ++jt) {
-        formatList += QLatin1String(jt->first.c_str());
-        formatList += QLatin1String(";;");
+    if (formatList.isEmpty()) {
+        formatList = QObject::tr("FreeCAD document (*.FCStd)");
     }
-    formatList += QObject::tr(allFiles);
 
     QString selectedFilter;
     QStringList fileList = FileDialog::getOpenFileNames(
