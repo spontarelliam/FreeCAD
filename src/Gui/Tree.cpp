@@ -5750,6 +5750,16 @@ DocumentObjectItem* DocumentItem::findItem(
         if (select) {
             item->selected += 2;
             item->mySubs.clear();
+            // also mark all parent object items as selected so the
+            // model tree highlights the whole parent chain
+            for (QTreeWidgetItem* parent = item->parent(); parent != nullptr; parent = parent->parent()) {
+                if (parent->type() == TreeWidget::ObjectType) {
+                    static_cast<DocumentObjectItem*>(parent)->selected += 2;
+                }
+                else {
+                    break;
+                }
+            }
         }
         return item;
     }
