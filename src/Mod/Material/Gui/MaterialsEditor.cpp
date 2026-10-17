@@ -32,6 +32,8 @@
 #include <QTextStream>
 #include <QVariant>
 #include <limits>
+#include <map>
+#include <vector>
 
 
 #include <App/Application.h>
@@ -867,6 +869,55 @@ void MaterialsEditor::addFavorites(QStandardItem* parent)
     }
 }
 
+namespace
+{
+using MaterialTreeMap = std::map<QString, std::shared_ptr<Materials::MaterialTreeNode>>;
+
+struct FlatMaterial
+{
+    QString name;
+    QString folder;  // Top-level folder within the library, empty at the library root
+    std::shared_ptr<Materials::MaterialTreeNode> node;
+};
+
+void collectMaterials(const MaterialTreeMap& tree,
+                      const QString& folder,
+                      std::vector<FlatMaterial>& materials)
+{
+    for (const auto& [name, node] : tree) {
+        if (node->getType() == Materials::MaterialTreeNode::NodeType::DataNode) {
+            materials.push_back({name, folder, node});
+        }
+        else {
+            collectMaterials(*node->getFolder(), folder.isEmpty() ? name : folder, materials);
+        }
+    }
+}
+
+// The System library is shown without folders. A name that occurs in more than one folder is
+// suffixed with its top-level folder, e.g. "Default (Appearance)" and "Default (Standard)".
+std::shared_ptr<MaterialTreeMap> flattenMaterialTree(const MaterialTreeMap& tree)
+{
+    std::vector<FlatMaterial> materials;
+    collectMaterials(tree, QString(), materials);
+
+    std::map<QString, int> nameCount;
+    for (const auto& material : materials) {
+        ++nameCount[material.name];
+    }
+
+    auto flat = std::make_shared<MaterialTreeMap>();
+    for (const auto& material : materials) {
+        QString label = material.name;
+        if (nameCount[material.name] > 1 && !material.folder.isEmpty()) {
+            label = QStringLiteral("%1 (%2)").arg(material.name, material.folder);
+        }
+        flat->emplace(label, material.node);
+    }
+    return flat;
+}
+}  // namespace
+
 void MaterialsEditor::fillMaterialTree()
 {
     auto param = App::GetApplication().GetParameterGroupByPath(
@@ -892,6 +943,9 @@ void MaterialsEditor::fillMaterialTree()
     auto libraries = getMaterialManager().getLibraries();
     for (const auto& library : *libraries) {
         auto materialTree = getMaterialManager().getMaterialTree(*library);
+        if (library->isName(QStringLiteral("System"))) {
+            materialTree = flattenMaterialTree(*materialTree);
+        }
 
         bool showLibraries = _filterOptions.includeEmptyLibraries();
         if (!_filterOptions.includeEmptyLibraries() && materialTree->size() > 0) {
