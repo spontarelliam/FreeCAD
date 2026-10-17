@@ -238,7 +238,6 @@ SET(PatternLib_Files
 )
 
 SET(MachiningLib_Files
-    Resources/Materials/Machining/Aluminum-Generic.FCMat
     Resources/Materials/Machining/Brass-Generic.FCMat
     Resources/Materials/Machining/Copper-Generic.FCMat
     Resources/Materials/Machining/Plastic-Generic.FCMat
