@@ -52,10 +52,10 @@ public:
     void paint(QPainter* painter,
                const QStyleOptionViewItem& option,
                const QModelIndex& index) const override;
-    // void setEditorData(QWidget* editor, const QModelIndex& index) const override;
-    // void setModelData(QWidget* editor,
-    //                   QAbstractItemModel* model,
-    //                   const QModelIndex& index) const override;
+    void setEditorData(QWidget* editor, const QModelIndex& index) const override;
+    void setModelData(QWidget* editor,
+                      QAbstractItemModel* model,
+                      const QModelIndex& index) const override;
 
 protected:
     bool editorEvent(QEvent* event,
@@ -78,6 +78,8 @@ Q_SIGNALS:
 
 private:
     QWidget* createWidget(QWidget* parent, const QVariant& item, const QModelIndex& index) const;
+    bool hasRowProperty(const QStandardItem* group, int row) const;
+    bool addRowModel(const QStandardItem* group, int row) const;
     void showColorModal(const QString& propertyName, QStandardItem* item);
     void showImageModal(const QString& propertyName, QStandardItem* item);
     void showListModal(const QString& propertyName, QStandardItem* item);

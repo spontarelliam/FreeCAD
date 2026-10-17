@@ -107,6 +107,81 @@ QString MaterialDelegate::getUnits(const QModelIndex& index) const
     return propertyUnits;
 }
 
+// The editor lists every property of every model, including models the material does not have.
+// Such a row has no property in the material until the row's model is added to it.
+bool MaterialDelegate::hasRowProperty(const QStandardItem* group, int row) const
+{
+    auto material = group->child(row, 1)->data().value<std::shared_ptr<Materials::Material>>();
+    auto propertyName = group->child(row, 0)->data().toString();
+    return material->hasPhysicalProperty(propertyName)
+        || material->hasAppearanceProperty(propertyName);
+}
+
+// Adds the model that owns the row (stored on the model root item) to the material, so that the
+// row's property can be edited. Returns whether the property exists afterwards.
+bool MaterialDelegate::addRowModel(const QStandardItem* group, int row) const
+{
+    if (hasRowProperty(group, row)) {
+        return true;
+    }
+
+    auto material = group->child(row, 1)->data().value<std::shared_ptr<Materials::Material>>();
+    auto uuid = group->data().toString();
+    try {
+        auto model = Materials::ModelManager::getManager().getModel(uuid);
+        if (model->getType() == Materials::Model::ModelType_Physical) {
+            material->addPhysical(uuid);
+        }
+        else {
+            material->addAppearance(uuid);
+        }
+    }
+    catch (const Materials::ModelNotFound&) {
+    }
+    return hasRowProperty(group, row);
+}
+
+namespace
+{
+constexpr const char* initialTextProperty = "materialInitialText";
+
+// Line edits, spin boxes, combo boxes and file choosers expose their visible text through one of
+// these properties.
+QString editorText(const QWidget* editor)
+{
+    for (const char* name : {"text", "currentText", "fileName"}) {
+        auto value = editor->property(name);
+        if (value.isValid()) {
+            return value.toString();
+        }
+    }
+    return {};
+}
+}  // namespace
+
+void MaterialDelegate::setEditorData(QWidget* editor, const QModelIndex& index) const
+{
+    BaseDelegate::setEditorData(editor, index);
+    if (editor) {
+        editor->setProperty(initialTextProperty, editorText(editor));
+    }
+}
+
+void MaterialDelegate::setModelData(QWidget* editor,
+                                    QAbstractItemModel* model,
+                                    const QModelIndex& index) const
+{
+    // Leaving an untouched row of a model the material does not have must not add that model
+    auto treeModel = dynamic_cast<const QStandardItemModel*>(model);
+    auto item = treeModel ? treeModel->itemFromIndex(index) : nullptr;
+    auto group = item ? item->parent() : nullptr;
+    if (editor && group && group->child(index.row(), 1) && !hasRowProperty(group, index.row())
+        && editorText(editor) == editor->property(initialTextProperty).toString()) {
+        return;
+    }
+    BaseDelegate::setModelData(editor, model, index);
+}
+
 QVariant MaterialDelegate::getValue(const QModelIndex& index) const
 {
     auto treeModel = dynamic_cast<const QStandardItemModel*>(index.model());
@@ -118,7 +193,7 @@ QVariant MaterialDelegate::getValue(const QModelIndex& index) const
 
     int row = index.row();
     QVariant propertyValue;
-    if (group->child(row, 1)) {
+    if (group->child(row, 1) && hasRowProperty(group, row)) {
         auto material = group->child(row, 1)->data().value<std::shared_ptr<Materials::Material>>();
         // auto propertyName = group->child(row, 0)->text();
         auto propertyName = group->child(row, 0)->data().toString();
@@ -140,6 +215,9 @@ void MaterialDelegate::setValue(QAbstractItemModel* model,
 
     int row = index.row();
     if (group->child(row, 1)) {
+        if (!addRowModel(group, row)) {
+            return;
+        }
         auto material = group->child(row, 1)->data().value<std::shared_ptr<Materials::Material>>();
         auto propertyName = group->child(row, 0)->data().toString();
         std::string _name = propertyName.toStdString();
@@ -187,7 +265,7 @@ void MaterialDelegate::notifyChanged(const QAbstractItemModel* model,
     }
 
     int row = index.row();
-    if (group->child(row, 1)) {
+    if (group->child(row, 1) && hasRowProperty(group, row)) {
         auto material = group->child(row, 1)->data().value<std::shared_ptr<Materials::Material>>();
         // auto propertyName = group->child(row, 0)->text();
         auto propertyName = group->child(row, 0)->data().toString();
@@ -221,6 +299,19 @@ bool MaterialDelegate::editorEvent(QEvent* event,
             QString propertyName = group->child(row, 0)->data().toString();
 
             auto type = getType(index);
+            const bool modal = type == Materials::MaterialValue::Color
+                || type == Materials::MaterialValue::MultiLineString
+                || type == Materials::MaterialValue::List
+                || type == Materials::MaterialValue::FileList
+                || type == Materials::MaterialValue::ImageList
+                || type == Materials::MaterialValue::Array2D
+                || type == Materials::MaterialValue::Array3D
+                || type == Materials::MaterialValue::Image
+                || type == Materials::MaterialValue::SVG;
+            // The modal editors edit the material's property directly, so it must exist first
+            if (modal && !addRowModel(group, row)) {
+                return true;
+            }
             if (type == Materials::MaterialValue::Color) {
                 showColorModal(propertyName, item);
                 // Mark as handled
@@ -394,6 +485,11 @@ void MaterialDelegate::paint(QPainter* painter,
         return;
     }
     if (type == Materials::MaterialValue::Color) {
+        // A color the material does not have would otherwise be painted as a black swatch
+        if (!hasRowProperty(group, index.row())) {
+            QStyledItemDelegate::paint(painter, option, index);
+            return;
+        }
         paintColor(painter, option, index);
         return;
     }

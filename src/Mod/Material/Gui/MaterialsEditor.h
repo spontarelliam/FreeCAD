@@ -93,6 +93,9 @@ public:
 
     void updateMaterialAppearance();
     void updateMaterialProperties();
+    void addModelProperties(QTreeView* tree,
+                            const QSet<QString>* materialModels,
+                            Materials::ModelFilter filter);
     void updateMaterialGeneral();
     void updateMaterial();
     void onSelectMaterial(const QItemSelection& selected, const QItemSelection& deselected);
