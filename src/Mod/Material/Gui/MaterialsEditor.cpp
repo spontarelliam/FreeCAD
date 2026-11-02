@@ -1179,7 +1179,9 @@ void MaterialsEditor::addModelProperties(QTreeView* tree,
         }
     }
     std::vector<std::shared_ptr<Materials::Model>> otherModels;
-    for (const auto& [uuid, model] : *manager.getModels()) {
+    // getModels() builds a new map; keep it alive for the loop.
+    const auto allModels = manager.getModels();
+    for (const auto& [uuid, model] : *allModels) {
         if (Materials::ModelManager::passFilter(filter, model->getType())
             && !(materialModels && materialModels->contains(uuid))) {
             otherModels.push_back(model);
